@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { apiFetch, ApiError } from "@/lib/api";
 import {
   calculatePromptEngagement,
   isPromptLiked,
@@ -21,9 +22,16 @@ import {
   toggleStoredPromptSave,
   type Prompt,
 } from "@/lib/prompts";
+import type { MarketplacePrompt } from "@/lib/types";
+
+type PromptCardData =
+  | Prompt
+  | (Omit<MarketplacePrompt, "author"> & {
+      author: MarketplacePrompt["author"];
+    });
 
 type PromptCardProps = {
-  prompt: Prompt;
+  prompt: PromptCardData;
   accessLabel?: string;
   accessTone?: "free" | "premium";
   ctaLabel?: string;
@@ -32,6 +40,54 @@ type PromptCardProps = {
   onLikeChange?: (slug: string, liked: boolean) => void;
   onSaveChange?: (slug: string, saved: boolean) => void;
 };
+
+function getPromptIdentifier(prompt: PromptCardData) {
+  if ("_id" in prompt && typeof prompt._id === "string") {
+    return prompt._id;
+  }
+
+  return null;
+}
+
+function getPromptRating(prompt: PromptCardData) {
+  return "ratingAverage" in prompt ? prompt.ratingAverage : prompt.rating;
+}
+
+function getPromptSales(prompt: PromptCardData) {
+  return "views" in prompt ? prompt.views : prompt.sales;
+}
+
+function getPromptLikes(prompt: PromptCardData) {
+  return "likeCount" in prompt ? prompt.likeCount : prompt.likes;
+}
+
+function getPromptCreator(prompt: PromptCardData) {
+  return "author" in prompt && typeof prompt.author === "object"
+    ? prompt.author.name
+    : prompt.creator;
+}
+
+function getPromptAccess(prompt: PromptCardData) {
+  return "access" in prompt ? prompt.access : "free";
+}
+
+function getPromptExcerpt(prompt: PromptCardData) {
+  return "excerpt" in prompt ? prompt.excerpt : prompt.evaluationSummary;
+}
+
+function getPromptEngagement(prompt: PromptCardData, likes: number) {
+  if ("engagementScore" in prompt) {
+    const likeDelta = likes - prompt.likeCount;
+    return Math.max(0, Math.round(prompt.engagementScore + likeDelta * 4));
+  }
+
+  return Math.round(
+    calculatePromptEngagement({
+      ...prompt,
+      likes,
+    })
+  );
+}
 
 export function PromptCard({
   prompt,
@@ -43,28 +99,101 @@ export function PromptCard({
   onLikeChange,
   onSaveChange,
 }: PromptCardProps) {
-  const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [likes, setLikes] = useState(prompt.likes);
+  const promptId = getPromptIdentifier(prompt);
+  const [liked, setLiked] = useState("isLiked" in prompt ? Boolean(prompt.isLiked) : false);
+  const [saved, setSaved] = useState(
+    "isFavorited" in prompt ? Boolean(prompt.isFavorited) : false
+  );
+  const [likes, setLikes] = useState(getPromptLikes(prompt));
+  const [actionMessage, setActionMessage] = useState("");
 
   useEffect(() => {
     const storedLiked = isPromptLiked(prompt.slug);
-    setLiked(storedLiked);
-    setSaved(isPromptSaved(prompt.slug));
-    setLikes(prompt.likes + (storedLiked ? 1 : 0));
-  }, [prompt.likes, prompt.slug]);
+    const storedSaved = isPromptSaved(prompt.slug);
 
-  function handleToggleLike() {
-    const nextLiked = toggleStoredPromptLike(prompt.slug);
-    setLiked(nextLiked);
-    setLikes((current) => current + (nextLiked ? 1 : -1));
-    onLikeChange?.(prompt.slug, nextLiked);
+    if (promptId) {
+      const initialLiked =
+        ("isLiked" in prompt ? Boolean(prompt.isLiked) : false) || storedLiked;
+      setLiked(initialLiked);
+      setSaved(
+        ("isFavorited" in prompt ? Boolean(prompt.isFavorited) : false) ||
+          storedSaved
+      );
+      setLikes(getPromptLikes(prompt) + (storedLiked ? 1 : 0));
+      setActionMessage("");
+      return;
+    }
+
+    setLiked(storedLiked);
+    setSaved(storedSaved);
+    setLikes(getPromptLikes(prompt) + (storedLiked ? 1 : 0));
+  }, [prompt, promptId]);
+
+  async function handleToggleLike() {
+    if (!promptId) {
+      const nextLiked = toggleStoredPromptLike(prompt.slug);
+      setLiked(nextLiked);
+      setLikes((current) => current + (nextLiked ? 1 : -1));
+      onLikeChange?.(prompt.slug, nextLiked);
+      return;
+    }
+
+    try {
+      const nextLiked = !liked;
+      await apiFetch<{ prompt: MarketplacePrompt }>(
+        `/prompts/${promptId}/like`,
+        { method: nextLiked ? "POST" : "DELETE" }
+      );
+      if (isPromptLiked(prompt.slug) !== nextLiked) {
+        toggleStoredPromptLike(prompt.slug);
+      }
+      setLiked(nextLiked);
+      setLikes((current) => current + (nextLiked ? 1 : -1));
+      setActionMessage("");
+      onLikeChange?.(prompt.slug, nextLiked);
+    } catch (error) {
+      const nextLiked = toggleStoredPromptLike(prompt.slug);
+      setLiked(nextLiked);
+      setLikes((current) => current + (nextLiked ? 1 : -1));
+      setActionMessage(
+        error instanceof ApiError && error.statusCode === 401
+          ? "Saved locally. Sign in to sync likes."
+          : "Saved locally while the server is unavailable."
+      );
+      onLikeChange?.(prompt.slug, nextLiked);
+    }
   }
 
-  function handleToggleSave() {
-    const nextSaved = toggleStoredPromptSave(prompt.slug);
-    setSaved(nextSaved);
-    onSaveChange?.(prompt.slug, nextSaved);
+  async function handleToggleSave() {
+    if (!promptId) {
+      const nextSaved = toggleStoredPromptSave(prompt.slug);
+      setSaved(nextSaved);
+      onSaveChange?.(prompt.slug, nextSaved);
+      return;
+    }
+
+    try {
+      const nextSaved = !saved;
+      await apiFetch<{ prompt: MarketplacePrompt }>(
+        `/prompts/${promptId}/favorite`,
+        { method: nextSaved ? "POST" : "DELETE" }
+      );
+      if (isPromptSaved(prompt.slug) !== nextSaved) {
+        toggleStoredPromptSave(prompt.slug);
+      }
+      setSaved(nextSaved);
+      setActionMessage("");
+      onSaveChange?.(prompt.slug, nextSaved);
+    } catch (error) {
+      const nextSaved = toggleStoredPromptSave(prompt.slug);
+      setSaved(nextSaved);
+      setActionMessage(
+        error instanceof ApiError && error.statusCode === 401
+          ? "Saved locally. Sign in to sync saved prompts."
+          : "Saved locally while the server is unavailable."
+      );
+      onSaveChange?.(prompt.slug, nextSaved);
+    }
   }
 
   return (
@@ -90,7 +219,7 @@ export function PromptCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 text-sm">
             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-semibold">{prompt.rating}</span>
+            <span className="font-semibold">{getPromptRating(prompt)}</span>
           </div>
         </div>
         <CardTitle
@@ -120,7 +249,7 @@ export function PromptCard({
       <CardContent className="flex flex-1 flex-col gap-2 p-3 pt-0 lg:p-3 lg:pt-0">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <TrendingUp className="h-3.5 w-3.5" />
-          <span>{prompt.sales} sales</span>
+          <span>{getPromptSales(prompt)} views</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -130,13 +259,7 @@ export function PromptCard({
           </span>
           <span className="flex items-center gap-1.5">
             <Flame className="h-3.5 w-3.5" />
-            {Math.round(
-              calculatePromptEngagement({
-                ...prompt,
-                likes,
-              })
-            )}{" "}
-            engagement
+            {getPromptEngagement(prompt, likes)} engagement
           </span>
         </div>
 
@@ -150,7 +273,7 @@ export function PromptCard({
               overflow: "hidden",
             }}
           >
-            {prompt.excerpt}
+            {getPromptExcerpt(prompt)}
           </p>
         ) : (
           <p
@@ -162,7 +285,7 @@ export function PromptCard({
               overflow: "hidden",
             }}
           >
-            by {prompt.creator}
+            by {getPromptCreator(prompt)}
           </p>
         )}
 
@@ -186,11 +309,19 @@ export function PromptCard({
             {saved ? "Saved" : "Save"}
           </Button>
         </div>
+
+        {actionMessage ? (
+          <p className="text-[11px] text-amber-300">{actionMessage}</p>
+        ) : null}
       </CardContent>
 
       <CardFooter className="flex items-center justify-between p-3 pt-0 lg:p-3 lg:pt-0">
         <span className="text-[11px] text-muted-foreground sm:text-xs">
-          {saved ? "Saved for later" : prompt.access === "premium" ? "Premium access" : "Free access"}
+          {saved
+            ? "Saved for later"
+            : getPromptAccess(prompt) === "premium"
+              ? "Premium access"
+              : "Free access"}
         </span>
         <Button
           asChild
