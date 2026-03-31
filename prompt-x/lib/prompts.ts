@@ -25,6 +25,11 @@ export type Prompt = {
 const PROMPT_LIKES_STORAGE_KEY = "promptx.promptLikes";
 const PROMPT_SAVES_STORAGE_KEY = "promptx.savedPrompts";
 
+type StorageScopedUser = {
+  id?: string;
+  email?: string;
+};
+
 export const prompts: Prompt[] = [
   {
     id: 1,
@@ -1051,6 +1056,33 @@ export const categories = ["All", "Writing", "Design", "Coding", "Marketing"];
 export const freePrompts = prompts.filter((prompt) => prompt.access === "free");
 export const premiumPrompts = prompts.filter((prompt) => prompt.access === "premium");
 
+function getCurrentStorageScope() {
+  if (typeof window === "undefined") {
+    return "guest";
+  }
+
+  try {
+    const raw = window.localStorage.getItem("promptx.user");
+    const user = raw ? (JSON.parse(raw) as StorageScopedUser) : null;
+
+    if (user?.id) {
+      return user.id;
+    }
+
+    if (user?.email) {
+      return user.email.toLowerCase();
+    }
+  } catch {
+    return "guest";
+  }
+
+  return "guest";
+}
+
+function getScopedStorageKey(baseKey: string) {
+  return `${baseKey}:${getCurrentStorageScope()}`;
+}
+
 export function calculatePromptEngagement(prompt: Prompt) {
   return (
     prompt.likes * 4 +
@@ -1079,7 +1111,9 @@ export function getStoredPromptLikes() {
   }
 
   try {
-    const raw = window.localStorage.getItem(PROMPT_LIKES_STORAGE_KEY);
+    const raw = window.localStorage.getItem(
+      getScopedStorageKey(PROMPT_LIKES_STORAGE_KEY)
+    );
     return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
   } catch {
     return {};
@@ -1102,7 +1136,7 @@ export function toggleStoredPromptLike(slug: string) {
 
   if (typeof window !== "undefined") {
     window.localStorage.setItem(
-      PROMPT_LIKES_STORAGE_KEY,
+      getScopedStorageKey(PROMPT_LIKES_STORAGE_KEY),
       JSON.stringify(storedLikes)
     );
   }
@@ -1125,7 +1159,9 @@ export function getStoredSavedPrompts() {
   }
 
   try {
-    const raw = window.localStorage.getItem(PROMPT_SAVES_STORAGE_KEY);
+    const raw = window.localStorage.getItem(
+      getScopedStorageKey(PROMPT_SAVES_STORAGE_KEY)
+    );
     return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
   } catch {
     return {};
@@ -1148,7 +1184,7 @@ export function toggleStoredPromptSave(slug: string) {
 
   if (typeof window !== "undefined") {
     window.localStorage.setItem(
-      PROMPT_SAVES_STORAGE_KEY,
+      getScopedStorageKey(PROMPT_SAVES_STORAGE_KEY),
       JSON.stringify(storedSaves)
     );
   }
