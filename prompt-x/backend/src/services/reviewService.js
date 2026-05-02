@@ -75,6 +75,7 @@ async function addReview(promptId, userId, payload) {
     promptId,
     type: ACTIVITY_TYPES.REVIEW,
     tagsSnapshot: prompt.tags,
+    categorySnapshot: prompt.category,
   });
 
   return Review.findById(review._id).populate("user", "name avatarUrl").lean();

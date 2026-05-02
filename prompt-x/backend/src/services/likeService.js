@@ -59,6 +59,7 @@ async function addLike(promptId, userId) {
     promptId,
     type: ACTIVITY_TYPES.LIKE,
     tagsSnapshot: prompt.tags,
+    categorySnapshot: prompt.category,
   });
 
   return Prompt.findById(promptId).populate("author", "name avatarUrl").lean();

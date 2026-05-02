@@ -3,34 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, Sparkles, User } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-type StoredUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-};
-
-function getStoredUser() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem("promptx.user");
-    return raw ? (JSON.parse(raw) as StoredUser) : null;
-  } catch {
-    return null;
-  }
-}
+import { clearStoredSession, getStoredUser, type StoredUser } from "@/lib/session";
 
 export const Navbar = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<StoredUser | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     function syncUser() {
@@ -44,6 +27,16 @@ export const Navbar = () => {
       window.removeEventListener("storage", syncUser);
     };
   }, []);
+
+  useEffect(() => {
+    if (pathname === "/browse") {
+      const params = new URLSearchParams(window.location.search);
+      setSearchQuery(params.get("search") || "");
+      return;
+    }
+
+    setSearchQuery("");
+  }, [pathname]);
 
   const initials = useMemo(() => {
     if (!user?.name) {
@@ -59,14 +52,24 @@ export const Navbar = () => {
   }, [user]);
 
   function handleLogout() {
-    window.localStorage.removeItem("promptx.user");
-    window.localStorage.removeItem("promptx.accessToken");
-    window.localStorage.removeItem("promptx.refreshToken");
-    window.sessionStorage.removeItem("promptx.accessToken");
-    window.sessionStorage.removeItem("promptx.refreshToken");
+    clearStoredSession();
     setUser(null);
     router.push("/auth");
     router.refresh();
+  }
+
+  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    router.push(query ? `/browse?search=${encodeURIComponent(query)}` : "/browse");
+    window.dispatchEvent(
+      new CustomEvent("promptx:filters-changed", {
+        detail: {
+          category: "All",
+          search: query,
+        },
+      })
+    );
   }
 
   return (
@@ -107,6 +110,14 @@ export const Navbar = () => {
             </Link>
             {user ? (
               <Link
+                href="/submit"
+                className="text-sm text-foreground transition-colors hover:text-primary"
+              >
+                Submit
+              </Link>
+            ) : null}
+            {user ? (
+              <Link
                 href="/profile"
                 className="text-sm text-foreground transition-colors hover:text-primary"
               >
@@ -115,13 +126,18 @@ export const Navbar = () => {
             ) : null}
           </div>
 
-          <div className="relative hidden max-w-md flex-1 lg:flex">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="relative hidden max-w-md flex-1 lg:flex"
+          >
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search prompts..."
               className="border-border/50 bg-card pl-10 transition-colors focus:border-primary"
             />
-          </div>
+          </form>
 
           <div className="flex items-center gap-3">
             {user ? (

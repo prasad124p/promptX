@@ -62,9 +62,11 @@ function getPromptLikes(prompt: PromptCardData) {
 }
 
 function getPromptCreator(prompt: PromptCardData) {
-  return "author" in prompt && typeof prompt.author === "object"
-    ? prompt.author.name
-    : prompt.creator;
+  if ("author" in prompt && typeof prompt.author === "object") {
+    return prompt.author.name;
+  }
+
+  return "creator" in prompt ? prompt.creator : "Unknown";
 }
 
 function getPromptAccess(prompt: PromptCardData) {

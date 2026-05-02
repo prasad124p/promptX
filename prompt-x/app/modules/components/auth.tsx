@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Navbar } from "./navbar";
+import { setStoredUser } from "@/lib/session";
 
 type AuthTab = "login" | "signup";
 
@@ -208,7 +209,7 @@ export const Auth = ({ defaultTab = "login" }: AuthProps) => {
     try {
       const result = await submitAuthRequest("login", loginForm);
       persistAuthSession(result.tokens);
-      window.localStorage.setItem("promptx.user", JSON.stringify(result.user));
+      setStoredUser(result.user);
       setSuccessMessage("Signed in successfully. Redirecting...");
       router.push("/browse");
       router.refresh();
@@ -240,7 +241,7 @@ export const Auth = ({ defaultTab = "login" }: AuthProps) => {
         password: signupForm.password,
       });
       persistAuthSession(result.tokens);
-      window.localStorage.setItem("promptx.user", JSON.stringify(result.user));
+      setStoredUser(result.user);
       setSuccessMessage("Account created successfully. Redirecting...");
       router.push("/browse");
       router.refresh();

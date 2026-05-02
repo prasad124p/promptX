@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/app/modules/components/navbar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { PromptCard } from "@/app/modules/components/prompt-card";
 import { apiFetch, ApiError } from "@/lib/api";
-import type { MarketplacePrompt, PromptListResponse } from "@/lib/types";
+import type {
+  CategoryListResponse,
+  MarketplacePrompt,
+  PromptListResponse,
+} from "@/lib/types";
 import {
   freePrompts,
   hydratePromptLikes,
@@ -14,33 +19,113 @@ import {
   type Prompt,
 } from "@/lib/prompts";
 
+type FilterChangeDetail = {
+  category?: string;
+  search?: string;
+};
+
 export default function BrowserPage() {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [prompts, setPrompts] = useState<Array<MarketplacePrompt | Prompt>>([]);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(["All"]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const hasLoadedPrompts = useRef(false);
+
+  useEffect(() => {
+    function syncFiltersFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      setSelectedCategory(params.get("category") || "All");
+      setSearchQuery(params.get("search") || "");
+    }
+
+    function syncFiltersFromEvent(event: Event) {
+      const detail =
+        event instanceof CustomEvent
+          ? (event.detail as FilterChangeDetail | undefined)
+          : undefined;
+
+      if (detail) {
+        setSelectedCategory(detail.category || "All");
+        setSearchQuery(detail.search || "");
+        return;
+      }
+
+      syncFiltersFromUrl();
+    }
+
+    syncFiltersFromUrl();
+    window.addEventListener("popstate", syncFiltersFromUrl);
+    window.addEventListener("promptx:filters-changed", syncFiltersFromEvent);
+
+    return () => {
+      window.removeEventListener("popstate", syncFiltersFromUrl);
+      window.removeEventListener("promptx:filters-changed", syncFiltersFromEvent);
+    };
+  }, []);
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const response = await apiFetch<CategoryListResponse>(
+          "/categories?limit=100"
+        );
+        setCategoryOptions([
+          "All",
+          ...response.categories.map((category) => category.name),
+        ]);
+      } catch {
+        setCategoryOptions([
+          "All",
+          ...Array.from(new Set(freePrompts.map((prompt) => prompt.category))),
+        ]);
+      }
+    }
+
+    void loadCategories();
+  }, []);
 
   useEffect(() => {
     function getFallbackPrompts() {
+      const normalizedSearch = searchQuery.trim().toLowerCase();
       const scopedPrompts =
         selectedCategory === "All"
           ? freePrompts
           : freePrompts.filter((prompt) => prompt.category === selectedCategory);
 
-      return rankPromptsByEngagement(hydratePromptLikes(scopedPrompts)).slice(
-        0,
-        40
-      );
+      const filteredPrompts = normalizedSearch
+        ? scopedPrompts.filter((prompt) =>
+            [prompt.title, prompt.description, prompt.category, prompt.creator]
+              .join(" ")
+              .toLowerCase()
+              .includes(normalizedSearch)
+          )
+        : scopedPrompts;
+
+      return rankPromptsByEngagement(hydratePromptLikes(filteredPrompts)).slice(0, 40);
     }
 
     async function loadPrompts() {
+      const isInitialLoad = !hasLoadedPrompts.current;
+
       try {
-        setIsLoading(true);
+        setIsLoading(isInitialLoad);
+        setIsRefreshing(!isInitialLoad);
         setErrorMessage("");
-        const query =
-          selectedCategory === "All"
-            ? "/prompts?limit=40&sortBy=ranking"
-            : `/prompts?limit=40&sortBy=ranking&category=${encodeURIComponent(selectedCategory)}`;
+        const queryParams = new URLSearchParams({
+          limit: "40",
+          sortBy: "ranking",
+        });
+        if (selectedCategory !== "All") {
+          queryParams.set("category", selectedCategory);
+        }
+        if (searchQuery.trim()) {
+          queryParams.set("search", searchQuery.trim());
+        }
+        const query = `/prompts?${queryParams.toString()}`;
         const response = await apiFetch<PromptListResponse>(query);
         if (response.prompts.length) {
           setPrompts(response.prompts);
@@ -56,17 +141,14 @@ export default function BrowserPage() {
             : "Unable to load live prompts right now. Showing local demo prompts instead."
         );
       } finally {
+        hasLoadedPrompts.current = true;
         setIsLoading(false);
+        setIsRefreshing(false);
       }
     }
 
     void loadPrompts();
-  }, [selectedCategory]);
-
-  const categories = [
-    "All",
-    ...Array.from(new Set(prompts.map((prompt) => prompt.category))),
-  ];
+  }, [searchQuery, selectedCategory]);
 
   function handleLikeChange(slug: string, liked: boolean) {
     setPrompts((current) =>
@@ -88,6 +170,26 @@ export default function BrowserPage() {
             }
           : prompt
       )
+    );
+  }
+
+  function handleCategoryChange(category: string) {
+    setSelectedCategory(category);
+    const params = new URLSearchParams(window.location.search);
+    if (category === "All") {
+      params.delete("category");
+    } else {
+      params.set("category", category);
+    }
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `/browse?${nextQuery}` : "/browse");
+    window.dispatchEvent(
+      new CustomEvent<FilterChangeDetail>("promptx:filters-changed", {
+        detail: {
+          category,
+          search: params.get("search") || "",
+        },
+      })
     );
   }
 
@@ -115,7 +217,11 @@ export default function BrowserPage() {
             {errorMessage}
           </div>
         ) : null}
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div
+          className={`grid grid-cols-2 gap-2 transition-opacity duration-200 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${
+            isRefreshing ? "opacity-60" : "opacity-100"
+          }`}
+        >
           {prompts.map((prompt, index) => (
             <div
               key={"_id" in prompt ? prompt._id : prompt.id}
@@ -152,17 +258,24 @@ export default function BrowserPage() {
 
         {/* Filters */}
         <div className="mb-4 flex flex-wrap gap-2">
-          {categories.map((category) => (
+          {categoryOptions.map((category) => (
             <Button
               key={category}
               variant={selectedCategory === category ? "default" : "outline"}
-              onClick={() => setSelectedCategory(category)}
+              onClick={() => handleCategoryChange(category)}
               size="sm"
             >
               {category}
             </Button>
           ))}
         </div>
+
+        {searchQuery ? (
+          <div className="mb-4 rounded-2xl border border-border/50 bg-card/30 p-4 text-sm text-muted-foreground">
+            Showing results for <span className="font-medium text-foreground">{searchQuery}</span>
+            {selectedCategory !== "All" ? ` in ${selectedCategory}` : ""}.
+          </div>
+        ) : null}
 
         {/* Prompts Grid */}
         {content}

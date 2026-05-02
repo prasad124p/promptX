@@ -1,6 +1,12 @@
 const UserActivity = require("../models/UserActivity");
 
-async function trackActivity({ userId, promptId, type, tagsSnapshot = [] }) {
+async function trackActivity({
+  userId,
+  promptId,
+  type,
+  tagsSnapshot = [],
+  categorySnapshot = "",
+}) {
   if (!userId || !promptId || !type) {
     return null;
   }
@@ -10,6 +16,7 @@ async function trackActivity({ userId, promptId, type, tagsSnapshot = [] }) {
     prompt: promptId,
     type,
     tagsSnapshot,
+    categorySnapshot,
   });
 }
 

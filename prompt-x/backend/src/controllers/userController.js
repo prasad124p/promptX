@@ -37,10 +37,16 @@ const getCreatorPrompts = asyncHandler(async (req, res) => {
   });
 });
 
+const getWorkspace = asyncHandler(async (req, res) => {
+  const workspace = await userService.getCurrentWorkspace(req.user._id, req.query);
+  return sendSuccess(res, workspace);
+});
+
 module.exports = {
   getUser,
   updateMe,
   listCreators,
   getCreator,
   getCreatorPrompts,
+  getWorkspace,
 };

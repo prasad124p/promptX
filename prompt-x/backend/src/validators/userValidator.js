@@ -13,7 +13,12 @@ const creatorListQuerySchema = z.object({
   search: z.string().trim().optional(),
 });
 
+const workspaceQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(24).optional(),
+});
+
 module.exports = {
   updateProfileSchema,
   creatorListQuerySchema,
+  workspaceQuerySchema,
 };

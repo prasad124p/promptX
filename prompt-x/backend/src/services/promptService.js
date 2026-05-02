@@ -89,6 +89,7 @@ async function createPrompt(userId, payload) {
     promptId: prompt._id,
     type: ACTIVITY_TYPES.CREATE,
     tagsSnapshot: prompt.tags,
+    categorySnapshot: prompt.category,
   });
   await recalculatePromptRanking(prompt._id);
   triggerPromptEvaluation(prompt._id);
@@ -232,6 +233,7 @@ async function recordPromptView(promptId, userId) {
       promptId,
       type: ACTIVITY_TYPES.VIEW,
       tagsSnapshot: prompt.tags,
+      categorySnapshot: prompt.category,
     });
   }
 

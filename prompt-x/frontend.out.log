@@ -1,0 +1,35 @@
+
+> prompt-x@0.1.0 dev
+> next dev --turbopack
+
+   ▲ Next.js 15.5.6 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.6:3000
+
+ ✓ Starting...
+Creating turbopack project {
+  dir: 'C:\\Users\\Prasad\\Desktop\\projects\\PromptX Review 1\\prompt-x',
+  testMode: true
+}
+ ✓ Ready in 1890ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.9s
+ GET / 200 in 4894ms
+ GET / 200 in 595ms
+ ○ Compiling /browse ...
+ ✓ Compiled /browse in 750ms
+ GET /browse 200 in 1227ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 521ms
+ GET /favicon.ico?favicon.0b3bf435.ico 200 in 1087ms
+ GET / 200 in 677ms
+ GET / 200 in 1585ms
+ GET /favicon.ico?favicon.0b3bf435.ico 200 in 672ms
+ ✓ Compiled in 689ms
+ ✓ Compiled / in 373ms
+ GET / 200 in 1487ms
+ ✓ Compiled in 473ms
+ ✓ Compiled / in 336ms
+ GET / 200 in 1345ms
+ GET / 200 in 3157ms
+ GET / 200 in 712ms

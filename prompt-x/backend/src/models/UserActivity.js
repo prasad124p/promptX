@@ -25,6 +25,12 @@ const userActivitySchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    categorySnapshot: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
   },
   {
     timestamps: true,

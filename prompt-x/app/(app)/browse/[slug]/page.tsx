@@ -38,16 +38,17 @@ export default async function PromptPage({ params }: PromptPageProps) {
     const promptResponse = await serverApiFetch<PromptResponse>(
       `/prompts/${slug}`
     );
-    prompt = promptResponse.prompt;
+    const livePrompt = promptResponse.prompt;
+    prompt = livePrompt;
     const [reviewResponse, relatedResponse] = await Promise.all([
-      serverApiFetch<ReviewListResponse>(`/prompts/${prompt._id}/reviews?limit=10`),
+      serverApiFetch<ReviewListResponse>(`/prompts/${livePrompt._id}/reviews?limit=10`),
       serverApiFetch<PromptListResponse>(
-        `/prompts?category=${encodeURIComponent(prompt.category)}&limit=6&sortBy=ranking`
+        `/prompts?category=${encodeURIComponent(livePrompt.category)}&limit=6&sortBy=ranking`
       ),
     ]);
     reviews = reviewResponse.reviews;
     relatedPrompts = relatedResponse.prompts.filter(
-      (relatedPrompt) => relatedPrompt._id !== prompt._id
+      (relatedPrompt) => relatedPrompt._id !== livePrompt._id
     ).slice(0, 4);
   } catch {
     const fallbackPrompt = getPromptBySlug(slug);
@@ -126,7 +127,13 @@ export default async function PromptPage({ params }: PromptPageProps) {
               <span>{"likeCount" in prompt ? prompt.likeCount : prompt.likes} likes</span>
               <span>{"favoriteCount" in prompt ? prompt.favoriteCount : 0} saves</span>
               <span>{"reviewCount" in prompt ? prompt.reviewCount : prompt.comments.length} reviews</span>
-              <span>By {"author" in prompt ? prompt.author.name : prompt.creator}</span>
+              {"author" in prompt && prompt.author._id ? (
+                <Link href={`/creators/${prompt.author._id}`} className="hover:text-primary">
+                  By {prompt.author.name}
+                </Link>
+              ) : (
+                <span>By {"author" in prompt ? prompt.author.name : prompt.creator}</span>
+              )}
             </div>
 
             <div className="mt-8 rounded-2xl border border-border/50 bg-background/70 p-6">

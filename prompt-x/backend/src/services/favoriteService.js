@@ -59,6 +59,7 @@ async function addFavorite(promptId, userId) {
     promptId,
     type: ACTIVITY_TYPES.FAVORITE,
     tagsSnapshot: prompt.tags,
+    categorySnapshot: prompt.category,
   });
 
   return Prompt.findById(promptId).populate("author", "name avatarUrl").lean();

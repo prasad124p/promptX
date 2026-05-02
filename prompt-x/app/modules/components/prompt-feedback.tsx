@@ -6,11 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch, ApiError } from "@/lib/api";
-import {
-  isPromptLiked,
-  toggleStoredPromptLike,
-} from "@/lib/prompts";
-import type { MarketplacePrompt, MarketplaceReview } from "@/lib/types";
+import { isPromptLiked, toggleStoredPromptLike } from "@/lib/prompts";
+import { getStoredUser } from "@/lib/session";
+import type { MarketplacePrompt, MarketplaceReview, ReviewListResponse } from "@/lib/types";
 
 type PromptFeedbackProps = {
   promptId?: string;
@@ -31,6 +29,9 @@ export function PromptFeedback({
   const [comments, setComments] = useState(initialComments);
   const [liked, setLiked] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   useEffect(() => {
     if (promptId) {
@@ -46,6 +47,24 @@ export function PromptFeedback({
     setLikes(initialLikes + (storedLiked ? 1 : 0));
     setComments(initialComments);
   }, [initialComments, initialLiked, initialLikes, promptId, promptSlug]);
+
+  useEffect(() => {
+    if (!promptId) {
+      return;
+    }
+
+    const storageKey = `promptx.viewed.${promptId}`;
+
+    if (window.sessionStorage.getItem(storageKey)) {
+      return;
+    }
+
+    window.sessionStorage.setItem(storageKey, "1");
+    void apiFetch<{ prompt: MarketplacePrompt }>(`/prompts/${promptId}/view`, {
+      method: "POST",
+      includeAuth: true,
+    }).catch(() => null);
+  }, [promptId]);
 
   async function handleToggleLike() {
     if (promptId) {
@@ -79,6 +98,49 @@ export function PromptFeedback({
     setLikes((count) => count + (nextLiked ? 1 : -1));
   }
 
+  async function handleSubmitReview(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!promptId) {
+      setActionMessage("Demo prompts do not support review submission.");
+      return;
+    }
+
+    if (!getStoredUser()) {
+      setActionMessage("Sign in to add a review.");
+      return;
+    }
+
+    try {
+      setIsSubmittingReview(true);
+      setActionMessage("");
+
+      await apiFetch<{ review: MarketplaceReview }>(`/prompts/${promptId}/reviews`, {
+        method: "POST",
+        body: JSON.stringify({
+          rating,
+          comment,
+        }),
+      });
+
+      const refreshed = await apiFetch<ReviewListResponse>(
+        `/prompts/${promptId}/reviews?limit=10`
+      );
+      setComments(refreshed.reviews);
+      setComment("");
+      setRating(5);
+      setActionMessage("Review submitted and synced.");
+    } catch (error) {
+      setActionMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Unable to submit your review right now."
+      );
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  }
+
   return (
     <section className="mb-10 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
       <Card className="border-border/50 bg-card/40">
@@ -109,11 +171,43 @@ export function PromptFeedback({
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Reviews are now loaded from the backend. Review submission UI can be
-            added on top of this data flow next.
-          </p>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleSubmitReview} className="space-y-3">
+            <div>
+              <label className="mb-2 block text-sm font-medium">Your rating</label>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant={rating === value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setRating(value)}
+                  >
+                    <Star className={rating >= value ? "fill-current" : ""} />
+                    {value}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">Review</label>
+              <textarea
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                placeholder="Share how useful this prompt was and what stood out."
+                className="min-h-28 w-full rounded-2xl border border-border/50 bg-background/60 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+                maxLength={500}
+                required
+              />
+            </div>
+
+            <Button type="submit" disabled={isSubmittingReview}>
+              {isSubmittingReview ? "Submitting review..." : "Submit Review"}
+            </Button>
+          </form>
+
           {actionMessage ? (
             <p className="text-sm text-amber-300">{actionMessage}</p>
           ) : null}

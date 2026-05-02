@@ -19,45 +19,59 @@ function buildEvaluationPrompt(prompt) {
   ].join("\n");
 }
 
-async function requestOpenAiEvaluation(prompt) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+function buildEvaluationRequestBody(prompt, model) {
+  return {
+    model,
+    temperature: 0.2,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a strict evaluator for prompt quality. Output valid JSON only.",
+      },
+      {
+        role: "user",
+        content: buildEvaluationPrompt(prompt),
+      },
+    ],
+  };
+}
+
+function parseEvaluationContent(rawContent) {
+  if (!rawContent) {
+    throw new ApiError(502, "AI evaluation response was empty");
+  }
+
+  const trimmed = rawContent.trim();
+  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+  return JSON.parse(jsonMatch ? jsonMatch[0] : trimmed);
+}
+
+async function requestChatEvaluation(prompt, provider) {
+  const response = await fetch(provider.url, {
     method: "POST",
-    signal: AbortSignal.timeout(env.openAiTimeoutMs),
+    signal: AbortSignal.timeout(provider.timeoutMs),
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${env.openAiApiKey}`,
+      Authorization: `Bearer ${provider.apiKey}`,
     },
-    body: JSON.stringify({
-      model: env.openAiModel,
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a strict evaluator for prompt quality. Output valid JSON only.",
-        },
-        {
-          role: "user",
-          content: buildEvaluationPrompt(prompt),
-        },
-      ],
-    }),
+    body: JSON.stringify(buildEvaluationRequestBody(prompt, provider.model)),
   });
 
   if (!response.ok) {
     const errorPayload = await response.text();
-    throw new ApiError(502, "OpenAI evaluation request failed", errorPayload);
+    throw new ApiError(
+      502,
+      `${provider.name} evaluation request failed`,
+      errorPayload
+    );
   }
 
   const payload = await response.json();
   const rawContent = payload.choices?.[0]?.message?.content;
 
-  if (!rawContent) {
-    throw new ApiError(502, "OpenAI evaluation response was empty");
-  }
-
-  return JSON.parse(rawContent);
+  return parseEvaluationContent(rawContent);
 }
 
 function normalizeEvaluation(evaluation, source) {
@@ -81,18 +95,41 @@ function normalizeEvaluation(evaluation, source) {
 }
 
 async function getEvaluationResult(prompt) {
-  if (!env.openAiApiKey) {
+  const provider = env.groqApiKey
+    ? {
+        name: "Groq",
+        source: "groq",
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        apiKey: env.groqApiKey,
+        model: env.groqModel,
+        timeoutMs: env.groqTimeoutMs,
+      }
+    : env.openAiApiKey
+      ? {
+          name: "OpenAI",
+          source: "openai",
+          url: "https://api.openai.com/v1/chat/completions",
+          apiKey: env.openAiApiKey,
+          model: env.openAiModel,
+          timeoutMs: env.openAiTimeoutMs,
+        }
+      : null;
+
+  if (!provider) {
     return normalizeEvaluation(evaluatePromptHeuristically(prompt), "heuristic");
   }
 
   try {
-    const evaluation = await requestOpenAiEvaluation(prompt);
-    return normalizeEvaluation(evaluation, "openai");
+    const evaluation = await requestChatEvaluation(prompt, provider);
+    return normalizeEvaluation(evaluation, provider.source);
   } catch (error) {
-    logger.warn("OpenAI evaluation failed, falling back to heuristic scoring", {
-      promptId: prompt._id?.toString(),
-      error: error.message,
-    });
+    logger.warn(
+      `${provider.name} evaluation failed, falling back to heuristic scoring`,
+      {
+        promptId: prompt._id?.toString(),
+        error: error.message,
+      }
+    );
 
     return normalizeEvaluation(evaluatePromptHeuristically(prompt), "heuristic");
   }

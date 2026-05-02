@@ -43,6 +43,9 @@ Express + MongoDB backend for PromptX with:
 - `MONGODB_URI`
 - `JWT_ACCESS_SECRET`
 - `JWT_REFRESH_SECRET`
+- `GROQ_API_KEY`
+- `GROQ_MODEL`
+- `GROQ_TIMEOUT_MS`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
 - `OPENAI_TIMEOUT_MS`
@@ -52,6 +55,8 @@ Express + MongoDB backend for PromptX with:
 
 ## Notes
 
-- If `OPENAI_API_KEY` is not set, prompt evaluation falls back to a heuristic scorer so the platform still works.
+- If `GROQ_API_KEY` is set, prompt evaluation uses Groq's OpenAI-compatible chat completions API.
+- If `GROQ_API_KEY` is not set but `OPENAI_API_KEY` is set, prompt evaluation uses OpenAI.
+- If no hosted AI key is set, prompt evaluation falls back to a heuristic scorer so the platform still works.
 - Redis is optional. The backend runs without it, but will report Redis as disabled in health responses.
 - Queue persistence is stored in MongoDB through the `evaluationtasks` collection.

@@ -1,48 +1,46 @@
-import { FileText, Users, DollarSign, Star } from "lucide-react";
+import { BarChart3, FileText, FolderOpen, Star } from "lucide-react";
 
 const stats = [
   {
     icon: FileText,
-    value: "10K+",
-    label: "Active Prompts",
+    value: "50",
+    label: "Published prompts",
   },
   {
-    icon: Users,
-    value: "5K+",
-    label: "Creators",
+    icon: FolderOpen,
+    value: "12",
+    label: "Categories",
   },
   {
-    icon: DollarSign,
-    value: "₹50K+",
-    label: "Earned",
+    icon: BarChart3,
+    value: "Live",
+    label: "Engagement ranking",
   },
   {
     icon: Star,
-    value: "4.8★",
-    label: "Rating",
+    value: "AI",
+    label: "Quality evaluation",
   },
 ];
 
 export const Stats = () => {
   return (
-    <section className="py-20 relative">
+    <section className="relative py-12">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 gap-3 border-y border-border/50 py-4 md:grid-cols-4">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (
               <div
                 key={index}
-                className="group relative p-6 rounded-2xl bg-card/50 border border-border/50 backdrop-blur-sm hover:border-primary/50 transition-all duration-300 hover:scale-105"
+                className="flex items-center gap-3 rounded-md border border-border/50 bg-card/35 p-4 backdrop-blur-sm transition-colors hover:border-primary/40"
               >
-                <div className="flex flex-col items-center text-center space-y-3">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-tertiary/20 group-hover:from-primary/30 group-hover:to-tertiary/30 transition-colors">
-                    <Icon className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-3xl font-bold gradient-text">{stat.value}</div>
-                    <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
-                  </div>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-xl font-semibold text-foreground">{stat.value}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{stat.label}</div>
                 </div>
               </div>
             );
