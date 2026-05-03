@@ -8,13 +8,13 @@ const mongoSanitize = require("express-mongo-sanitize");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
-const env = require("./config/env");
-const logger = require("./config/logger");
-const { getRedisClient } = require("./config/redis");
-const requestId = require("./middleware/requestId");
-const routes = require("./routes");
-const notFound = require("./middleware/notFound");
-const errorHandler = require("./middleware/errorHandler");
+const env = require("./src/config/env");
+const logger = require("./src/config/logger");
+const { getRedisClient } = require("./src/config/redis");
+const requestId = require("./src/middleware/requestId");
+const routes = require("./src/routes");
+const notFound = require("./src/middleware/notFound");
+const errorHandler = require("./src/middleware/errorHandler");
 
 const app = express();
 

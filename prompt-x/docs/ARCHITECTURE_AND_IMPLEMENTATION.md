@@ -109,8 +109,8 @@ Application layer responsibilities already implemented:
 
 Important backend files:
 
-- `backend/src/app.js`
-- `backend/src/server.js`
+- `backend/app.js`
+- `backend/server.js`
 - `backend/src/routes/index.js`
 - `backend/src/routes/promptRoutes.js`
 - `backend/src/routes/reviewRoutes.js`
@@ -411,4 +411,3 @@ If you are changing workspace/profile data, start here:
 - `backend/src/services/userService.js`
 - `app/(app)/profile/page.tsx`
 - `lib/types.ts`
-

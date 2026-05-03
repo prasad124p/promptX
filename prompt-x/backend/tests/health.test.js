@@ -3,7 +3,7 @@ process.env.JWT_REFRESH_SECRET = "test-refresh-secret";
 
 const assert = require("node:assert/strict");
 const request = require("supertest");
-const app = require("../src/app");
+const app = require("../app");
 
 (async () => {
   const response = await request(app).get("/health");

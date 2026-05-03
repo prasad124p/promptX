@@ -1,9 +1,9 @@
 const app = require("./app");
-const env = require("./config/env");
-const logger = require("./config/logger");
-const { connectDatabase } = require("./config/database");
-const { connectRedis } = require("./config/redis");
-const { resumeEvaluationQueue } = require("./jobs/promptEvaluationJob");
+const env = require("./src/config/env");
+const logger = require("./src/config/logger");
+const { connectDatabase } = require("./src/config/database");
+const { connectRedis } = require("./src/config/redis");
+const { resumeEvaluationQueue } = require("./src/jobs/promptEvaluationJob");
 
 let server;
 
