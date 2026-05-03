@@ -171,7 +171,7 @@ export default function ProfilePage() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <Button asChild className="bg-gradient-to-r from-primary to-tertiary hover:opacity-90">
-                <Link href="/submit">Submit Prompt</Link>
+                <Link href="/upload">Upload Prompt</Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href="/browse">Browse Feed</Link>
@@ -211,7 +211,7 @@ export default function ProfilePage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Your Published Prompts</CardTitle>
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/submit">Create Another</Link>
+                  <Link href="/upload">Create Another</Link>
                 </Button>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">

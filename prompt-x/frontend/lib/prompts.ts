@@ -463,7 +463,7 @@ export const prompts: Prompt[] = [
     category: "Coding",
     rating: 4.9,
     sales: 1056,
-    creator: "Ravi Patel",
+    creator: "Ravi Malhotra",
     access: "free",
     excerpt:
       "Walk through logs, payloads, and edge cases to find the most probable cause of API failures.",

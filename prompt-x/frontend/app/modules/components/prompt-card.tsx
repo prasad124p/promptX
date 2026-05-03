@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bookmark, Flame, Heart, Star, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,12 +95,13 @@ export function PromptCard({
   prompt,
   accessLabel,
   accessTone = "free",
-  ctaLabel = "Open Prompt",
+  ctaLabel = "View details",
   className,
   showExcerpt = false,
   onLikeChange,
   onSaveChange,
 }: PromptCardProps) {
+  const router = useRouter();
   const promptId = getPromptIdentifier(prompt);
   const [liked, setLiked] = useState("isLiked" in prompt ? Boolean(prompt.isLiked) : false);
   const [saved, setSaved] = useState(
@@ -131,7 +132,20 @@ export function PromptCard({
     setLikes(getPromptLikes(prompt) + (storedLiked ? 1 : 0));
   }, [prompt, promptId]);
 
-  async function handleToggleLike() {
+  function openPrompt() {
+    router.push(`/browse/${prompt.slug}`);
+  }
+
+  function handleCardKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openPrompt();
+    }
+  }
+
+  async function handleToggleLike(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+
     if (!promptId) {
       const nextLiked = toggleStoredPromptLike(prompt.slug);
       setLiked(nextLiked);
@@ -166,7 +180,9 @@ export function PromptCard({
     }
   }
 
-  async function handleToggleSave() {
+  async function handleToggleSave(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+
     if (!promptId) {
       const nextSaved = toggleStoredPromptSave(prompt.slug);
       setSaved(nextSaved);
@@ -199,7 +215,14 @@ export function PromptCard({
   }
 
   return (
-    <Card className={`flex h-full flex-col ${className ?? ""}`}>
+    <Card
+      role="link"
+      tabIndex={0}
+      onClick={openPrompt}
+      onKeyDown={handleCardKeyDown}
+      aria-label={`Open ${prompt.title}`}
+      className={`flex h-full cursor-pointer flex-col transition-colors hover:border-primary/40 ${className ?? ""}`}
+    >
       <CardHeader className="space-y-2 p-3 pb-1.5 lg:p-3 lg:pb-1.5">
         <div className="flex items-start justify-between gap-3">
           <Badge className="bg-primary/20 text-primary border-primary/30">
@@ -325,12 +348,7 @@ export function PromptCard({
               ? "Premium access"
               : "Free access"}
         </span>
-        <Button
-          asChild
-          className="h-8 bg-gradient-to-r from-primary to-tertiary px-2.5 text-xs hover:opacity-90"
-        >
-          <Link href={`/browse/${prompt.slug}`}>{ctaLabel}</Link>
-        </Button>
+        <span className="text-xs font-medium text-primary">{ctaLabel}</span>
       </CardFooter>
     </Card>
   );

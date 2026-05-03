@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart, MessageSquare, Star } from "lucide-react";
+import { Heart, MessageSquare, Star, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch, ApiError } from "@/lib/api";
 import { isPromptLiked, toggleStoredPromptLike } from "@/lib/prompts";
-import { getStoredUser } from "@/lib/session";
+import { getStoredUser, type StoredUser } from "@/lib/session";
 import type { MarketplacePrompt, MarketplaceReview, ReviewListResponse } from "@/lib/types";
 
 type PromptFeedbackProps = {
@@ -31,7 +31,13 @@ export function PromptFeedback({
   const [actionMessage, setActionMessage] = useState("");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [deletingReviewId, setDeletingReviewId] = useState("");
+
+  useEffect(() => {
+    setCurrentUser(getStoredUser());
+  }, []);
 
   useEffect(() => {
     if (promptId) {
@@ -141,6 +147,30 @@ export function PromptFeedback({
     }
   }
 
+  async function handleDeleteReview(reviewId: string) {
+    try {
+      setDeletingReviewId(reviewId);
+      setActionMessage("");
+
+      await apiFetch<{ message: string }>(`/reviews/${reviewId}`, {
+        method: "DELETE",
+      });
+
+      setComments((current) =>
+        current.filter((review) => review._id !== reviewId)
+      );
+      setActionMessage("Review deleted.");
+    } catch (error) {
+      setActionMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Unable to delete your review right now."
+      );
+    } finally {
+      setDeletingReviewId("");
+    }
+  }
+
   return (
     <section className="mb-10 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
       <Card className="border-border/50 bg-card/40">
@@ -219,28 +249,50 @@ export function PromptFeedback({
           <CardTitle>Community Reviews</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {comments.length ? comments.map((comment) => (
-            <div
-              key={comment._id}
-              className="rounded-2xl border border-border/50 bg-background/60 p-4"
-            >
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium">{comment.user?.name || "Anonymous"}</p>
-                  <div className="mt-1 flex items-center gap-1 text-xs text-yellow-300">
-                    <Star className="h-3 w-3 fill-current" />
-                    {comment.rating}
+          {comments.length ? comments.map((comment) => {
+            const commentUserId = comment.user?._id || comment.user?.id;
+            const canDelete =
+              Boolean(currentUser?.id && commentUserId === currentUser.id) ||
+              currentUser?.role === "admin";
+
+            return (
+              <div
+                key={comment._id}
+                className="rounded-2xl border border-border/50 bg-background/60 p-4"
+              >
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{comment.user?.name || "Anonymous"}</p>
+                    <div className="mt-1 flex items-center gap-1 text-xs text-yellow-300">
+                      <Star className="h-3 w-3 fill-current" />
+                      {comment.rating}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(comment.createdAt).toLocaleDateString()}
+                    </span>
+                    {canDelete ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => handleDeleteReview(comment._id)}
+                        disabled={deletingReviewId === comment._id}
+                        aria-label="Delete review"
+                        className="h-8 w-8 border-destructive/40 text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(comment.createdAt).toLocaleDateString()}
-                </span>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  {comment.comment || "No written review provided."}
+                </p>
               </div>
-              <p className="text-sm leading-6 text-muted-foreground">
-                {comment.comment || "No written review provided."}
-              </p>
-            </div>
-          )) : (
+            );
+          }) : (
             <p className="text-sm text-muted-foreground">
               No reviews yet. This prompt is still building social proof.
             </p>

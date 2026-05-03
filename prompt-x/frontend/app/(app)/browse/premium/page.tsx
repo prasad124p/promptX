@@ -52,7 +52,7 @@ export default function PremiumPromptsPage() {
               prompt={prompt}
               accessLabel="Top 1% Premium"
               accessTone="premium"
-              ctaLabel="Open Premium Prompt"
+              ctaLabel="Premium details"
               className="border-amber-500/20 bg-card/40"
               showExcerpt
               onLikeChange={handleLikeChange}

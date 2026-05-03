@@ -71,14 +71,14 @@ export default async function HomePage() {
             PromptX is now wired as a working marketplace, not just a landing page.
           </h1>
           <p className="mt-4 max-w-3xl text-base text-muted-foreground md:text-lg">
-            Browse ranked prompts, inspect evaluation output, submit new prompts, and
+            Browse ranked prompts, inspect evaluation output, upload new prompts, and
             track marketplace activity across creators, categories, and reviews.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild className="bg-gradient-to-r from-primary to-tertiary hover:opacity-90">
-              <Link href="/submit">
-                Submit Prompt
+              <Link href="/upload">
+                Upload Prompt
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

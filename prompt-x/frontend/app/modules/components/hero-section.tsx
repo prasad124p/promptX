@@ -73,7 +73,7 @@ export const Hero = () => {
               variant="outline"
               className="h-11 border-border/70 bg-card/40 px-5 text-sm font-semibold backdrop-blur-sm"
             >
-              <Link href="/submit">Submit a prompt</Link>
+              <Link href="/upload">Upload a prompt</Link>
             </Button>
           </div>
 

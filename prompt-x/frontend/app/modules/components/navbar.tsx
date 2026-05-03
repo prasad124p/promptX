@@ -91,6 +91,12 @@ export const Navbar = () => {
               Home
             </Link>
             <Link
+              href="/home"
+              className="text-sm text-foreground transition-colors hover:text-primary"
+            >
+              For You
+            </Link>
+            <Link
               href="/browse"
               className="text-sm text-foreground transition-colors hover:text-primary"
             >
@@ -110,10 +116,10 @@ export const Navbar = () => {
             </Link>
             {user ? (
               <Link
-                href="/submit"
+                href="/upload"
                 className="text-sm text-foreground transition-colors hover:text-primary"
               >
-                Submit
+                Upload
               </Link>
             ) : null}
             {user ? (
